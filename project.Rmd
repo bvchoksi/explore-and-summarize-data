@@ -1,0 +1,259 @@
+---
+output: html_document
+---
+#Analyzing Portuguese "Vinho Verde" Red Wine Quality
+###by Bhavin V. Choksi
+
+***
+
+This project analyzes the physicochemical properties that affect the quality of 1,599 variants of the Portuguese "Vinho Verde" red wine.
+
+The physicochemical properties in the data set are based on objective tests.
+
+The quality of each wine is graded from 0 (very bad) to 10 (very excellent), based on the median of at least 3 evaluations by wine experts.
+
+My objective is to determine which of the physicochemical properties affect wine quality, and then build a linear model based on those factors to predict quality.
+
+Property|Unit|Description
+--|--|--
+Fixed acidity|gm/L|Most acids involved with wine or fixed or nonvolatile (do not evaporate readily).
+Volatile acidity|gm/L|The amount of acetic acid in wine, which at too high of levels can lead to an unpleasant, vinegar taste.
+Citric acid|gm/L|Found in small quantities, citric acid can add 'freshness' and flavor to wines.
+Residual sugar|gm/L|The amount of sugar remaining after fermentation stops, it's rare to find wines with less than 1 gram/liter and wines with greater than 45 grams/liter are considered sweet.
+Chlorides|gm/L|The amount of salt in the wine.
+Free sulfur dioxide|mg/L|The free form of SO2 exists in equilibrium between molecular SO2 (as a dissolved gas) and bisulfite ion; it prevents microbial growth and the oxidation of wine.
+Total sulfur dioxide|mg/L|Amount of free and bound forms of S02; in low concentrations, SO2 is mostly undetectable in wine, but at free SO2 concentrations over 50 ppm, SO2 becomes evident in the nose and taste of wine.
+Density|gm/mL|The density of wine is close to that of water depending on the percent alcohol and sugar content.
+pH||Describes how acidic or basic a wine is on a scale from 0 (very acidic) to 14 (very basic); most wines are between 3-4 on the pH scale.
+Sulphates|gm/L|A wine additive which can contribute to sulfur dioxide gas (S02) levels, which acts as an antimicrobial and antioxidant.
+Alcohol|%|The percent alcohol content of the wine. 
+
+[Wine Quality Data Set Information](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt)
+
+***
+
+###Wine Qualities
+
+First, let's take a look at the range of grades (0 - 10) that experts have given the red wines.
+
+```{r}
+#Loading data
+wqr <- read.csv(file = "~/Documents/Personal/Data Analyst Nanodegree/P3 Data Analysis with R/Project/wineQualityReds.csv")
+```
+
+```{r message = FALSE, warning = FALSE}
+library(dplyr)
+```
+
+```{r}
+#Confirming that all 1,599 rows were loaded
+nrow(wqr)
+```
+
+```{r}
+#Confirming that all columns were loaded
+colnames(wqr)
+```
+
+```{r}
+#Sample data
+head(wqr)
+```
+
+```{r}
+#Removing the first "serial no." column
+wqr$X <- NULL
+```
+
+A summary and plot of wine quality shows that most wines are average (grades 4 to 7).
+None of the wines are close to being very bad or very excellent.
+
+```{r}
+#Wine quality summary
+table(wqr$quality)
+summary(wqr$quality)
+```
+
+```{r message = FALSE, warning = FALSE}
+library(ggplot2)
+```
+
+```{r}
+#Wine quality histogram
+ggplot(aes(x = factor(quality)), data = wqr) +
+  geom_histogram() +
+  xlab("quality")
+```
+
+Some wine qualities are outliers (grades 3 and 8) for the provided data. However, they do belong in the data set as each wine undergoes at least three evalauations, and hence cannot be errors. We will retain them for further analysis.
+
+```{r}
+#Wine quality outliers
+lower.bound <- quantile(wqr$quality, 0.25) - IQR(wqr$quality)
+upper.bound <- quantile(wqr$quality, 0.75) + IQR(wqr$quality)
+
+sort(unique(wqr$quality[wqr$quality < lower.bound | wqr$quality > upper.bound]))
+```
+
+***
+
+###Physicochemical Properties and Quality
+Now let's explore the relationship between each physicochemical property and quality.
+
+The following charts plot each property against quality. The pattern on the charts, with the the aid of a smoother, indicate a linear relation between quality and some of the properties such as:
+
+- volatile acidity
+- chlorides
+- citric acid
+- total sulfur dioxide
+- density
+- sulphates
+- alcohol
+
+```{r message = FALSE, warning = FALSE}
+library(gridExtra)
+```
+
+```{r}
+#One chart per property, with layers to aid with overplotting and view linear relationship
+p1 <- ggplot(aes(fixed.acidity, quality), data = wqr) +
+  geom_point(alpha = 1/3, size = 0.75, position = "jitter") +
+  stat_smooth(method = "lm", colour = "red")
+p2 <- ggplot(aes(volatile.acidity, quality), data = wqr) +
+  geom_point(alpha = 1/3, size = 0.75, position = "jitter") +
+  stat_smooth(method = "lm", colour = "red")
+p3 <- ggplot(aes(citric.acid, quality), data = wqr) +
+  geom_point(alpha = 1/3, size = 0.75, position = "jitter") +
+  stat_smooth(method = "lm", colour = "red")
+p4 <- ggplot(aes(residual.sugar, quality), data = wqr) +
+  geom_point(alpha = 1/3, size = 0.75, position = "jitter") +
+  stat_smooth(method = "lm", colour = "red")
+p5 <- ggplot(aes(chlorides, quality), data = wqr) +
+  geom_point(alpha = 1/3, size = 0.75, position = "jitter") +
+  stat_smooth(method = "lm", colour = "red")
+p6 <- ggplot(aes(free.sulfur.dioxide, quality), data = wqr) +
+  geom_point(alpha = 1/3, size = 0.75, position = "jitter") +
+  stat_smooth(method = "lm", colour = "red")
+p7 <- ggplot(aes(total.sulfur.dioxide, quality), data = wqr) +
+  geom_point(alpha = 1/3, size = 0.75, position = "jitter") +
+  stat_smooth(method = "lm", colour = "red")
+p8 <- ggplot(aes(density, quality), data = wqr) +
+  geom_point(alpha = 1/3, size = 0.75, position = "jitter") +
+  stat_smooth(method = "lm", colour = "red")
+p9 <- ggplot(aes(pH, quality), data = wqr) +
+  geom_point(alpha = 1/3, size = 0.75, position = "jitter") +
+  stat_smooth(method = "lm", colour = "red")
+p10 <- ggplot(aes(sulphates, quality), data = wqr) +
+  geom_point(alpha = 1/3, size = 0.75, position = "jitter") +
+  stat_smooth(method = "lm", colour = "red")
+p11 <- ggplot(aes(alcohol, quality), data = wqr) +
+  geom_point(alpha = 1/3, size = 0.75, position = "jitter") +
+  stat_smooth(method = "lm", colour = "red")
+
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11)
+```
+
+Let's calculate the estimated coefficient between quality and each property to confirm what the plots indicate visually.
+
+The correlation coefficients confirm that volatile acidity, sulphates and alcohol  influence wine quality to an extent that could be significant, and citric acid, total sulfur dioxide, density and chlorides to a lesser degree.
+
+```{r}
+#Initialize
+property <- character(11)
+r <- numeric(11)
+min <- numeric(11)
+max <- numeric(11)
+col.names <- colnames(wqr)
+
+#Create a tabular view to see estimated coefficients and min/max values for each property at a glance
+for(i in 1:11) {
+  property[i] <- col.names[i]
+  r[i] <- as.numeric(cor.test(wqr$quality, wqr[[col.names[i]]])$estimate)
+  
+  summ <- summary(wqr[[col.names[i]]])
+  min[i] <- summ[1]
+  max[i] <- summ[6]
+}
+
+properties <- data.frame(property, r, min, max)
+properties
+```
+
+***
+
+###Interpreting the Charts and Estimated Coefficients
+Property|Linear Relation|Comments
+--|--|--
+Fixed acidity|Weak, positive.|-
+Volatile acidity|Medium to strong, negative.|Acetic acid at high levels can lead to an unpleasant, vinegar taste.
+Citric acid|Weak to medium, positive.|Citric acid can add 'freshness' and flavor to wines.
+Residual sugar|Very weak, positive.|All wines in the data set are fairly dry to impact quality.<br>The highest residual sugar level is 15.50 gm/L.<br>Only wines over 45 gm/L are considered sweet.
+Chlorides|Weak, negative.|-
+Free sulfur dioxide|Very weak, negative.|-
+Total sulfur dioxide|Weak, negative.|-
+Density|Weak, negative.|Density of water is 0.99997 gm/mL.<br>All wines in the data set are close to the density of water (0.99 to 1.004) to impact quality.
+pH|Very weak, negative.|On a scale of 0 (very acidic) to 14 (very basic) most wines are between 3-4.<br>All wines in the data set are between 2.74 and 4.01 to impact quality.
+Sulphates|Medium, positive.|Sulphates contribute to sulfur dioxide gas (S02) levels, which acts as an antimicrobial and antioxidant.<br>Interestingly, free and total sulfur dioxide levels do not seem to impact quality.
+Alcohol|Strong, positive.|-
+
+***
+
+###Building a model
+Let's build a linear model to predict wine quality using the following physicochemical properties having a medium to strong linear relation with quality as predictor variables:
+
+- alcohol
+- volatile acidity
+- sulphates
+
+We need two distinct samples from red wine quality data. One sample will be used to train the linear model. The other sample will be used to test the model, and compare its results with the actual evaluation by wine experts.
+
+```{r message = FALSE, warning = FALSE}
+library(memisc)
+```
+
+```{r}
+#1,500 rows in training set
+#99 rows in test set
+set.seed = 1056
+
+sample.indices = sample(1:nrow(wqr), 1500)
+
+training <- wqr[sample.indices, ]
+test <- wqr[-sample.indices, ]
+
+#Linear model
+m1 <- lm(quality ~ alcohol, data = training)
+m2 <- update(m1, ~ . + volatile.acidity)
+m3 <- update(m2, ~ . + sulphates)
+```
+
+The linear model seems to be a good fit for the data based on the summary below:
+
+- The R^2 value indicates that 33% of wine quality is due to its three properties - alcohol, volatile acidity and sulphates.
+
+- The R^2 value of a model with only alcohol as a predictor variable indicates that 22% of wine quality is due to alcohol alone.
+
+- Three significance stars (***) next to each property indicate that it is unlikely that no relationship exists between them and wine quality.
+
+- A p-value of 0.000 for each property indicates a very low probability that they are not relevant in predicting wine quality.
+
+```{r}
+mtable(m1, m2, m3)
+```
+
+***
+
+###Testing the model
+A test of the model results in residuals that are fairly normally distributed, again indicating that the three properties are significant in predicting wine quality.
+
+```{r}
+estimate <- predict(m3, newdata = test, interval = "prediction", level = 0.95)
+estimate <- data.frame(estimate)
+estimate$actual.quality <- NA
+estimate$actual.quality <- test$quality
+estimate$residual <- NA
+estimate$residual <- estimate$fit - estimate$actual.quality
+
+ggplot(aes(x = residual), data = estimate) +
+  geom_density()
+```
